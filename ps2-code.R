@@ -142,6 +142,7 @@ pop_satisfaction_var <- (1-(n/N))*var(mydata$satisfaction)/n
 pop_satisfaction_var
 
 ### visualizations
+# Figure 1: economic classes' choices on next vote, as a bar graph
 mydata %>%
   ggplot(aes(x=`income`,fill=`next_vote`)) +
   geom_bar(position="dodge")+
@@ -149,16 +150,17 @@ mydata %>%
   ylab("numbers of respondents") +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
   ggtitle("Figure 1: Political Orientation Between Respondents with Different Earnings")
-
+# Figure 2: as stacked propotional bar graph
 mydata %>%
   ggplot(aes(x=`income`,fill=`next_vote`)) +
   geom_bar(position="fill") +
   scale_color_fivethirtyeight() +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
   ylab('proportion withn each earning level') +
-  ggtitle("Figure 2: Different Earning Respondents' Political Orientation(within income groups)")
+  ggtitle("Figure 2: Political Orientations for Respondents with Different Income")
 
 # want to plot the opinion on media effect of audience who plan to vote differently
+# figure 3.1 & 3.2: bar graph for satisfaction scales
 # first, create new column to record differences between two votes
 mydata$party_choice <-ifelse(mydata$last_voted_party == mydata$next_vote,
                              'remain', 'switch')
@@ -168,7 +170,7 @@ p1 <- mydata %>%
   geom_bar(fill='#8CBD8C',col='grey') +
   xlab("participants' opinion on media effect") +
   ylab("number of people remain their vote choice") +
-  ggtitle('Figure 3.1: Opinions on Media Effect From Respondents Who Remain Vote Choices')
+  ggtitle('Figure 3.1: Opinions on Media Effects(respondents with vote choice changed)')
 
 p2 <- mydata %>% 
   filter(party_choice !="remain") %>%
@@ -176,11 +178,12 @@ p2 <- mydata %>%
   geom_bar(fill='#8CBD8C',col='grey') +
   xlab("participants' opinion on media effect") +
   ylab("number of people change their vote choice") +
-  ggtitle('Figure 3.2: Opinions on Media Effect From Respondents Who Change Vote Choices')
+  ggtitle('Figure 3.2: Opinions on Media Effects(respondents with vote choice changed)')
 
 p1
 p2
 
+# figure 4: stacked proportional bar graph between different earnings
 mydata %>%
   ggplot(aes(x=`income`,fill=`media_effect`)) +
   geom_bar(position="fill") +
@@ -190,6 +193,8 @@ mydata %>%
   xlab("Annual Incomes of Respondents") +
   ggtitle("Figure 4: Opinions on Media Effect Among Different Earnings")
 
+# Figure 5: stacked bar plot between age groups and
+#           their opinion on media effect
 mydata %>%
   ggplot(aes(x=`age`,fill=`media_effect`)) +
   geom_bar(position="fill") +
@@ -199,6 +204,7 @@ mydata %>%
   xlab("Age of the Respondents") +
   ggtitle("Figure 5: Different Age Groups' Opinion on Media Effect")
 
+# figure 6: stack proportional graph between diff former votes
 mydata %>%
   ggplot(aes(x=`last_voted_party`,fill=`media_effect`)) +
   geom_bar(position="fill") +
@@ -208,6 +214,8 @@ mydata %>%
   xlab("repondents previous political orientation") +
   ggtitle("Figure 6: Opinions on media effect based on former voting")
 
+# plot figure7: stacked bar plots between gender
+#               on media effect
 mydata %>%
   ggplot(aes(x=`gender`,fill=`media_effect`)) +
   geom_bar(position="fill") +
@@ -216,6 +224,7 @@ mydata %>%
   ylab("proportion within each gender group") +
   xlab("Gender of the Respondents") +
   ggtitle("Figure 7: Opinion on Media Effects among Gender Groups")
+
 
 # screen shots of survey
 knitr::include_graphics("/Users/jingxihuang/0001.jpg")
