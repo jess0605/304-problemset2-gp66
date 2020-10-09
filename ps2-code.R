@@ -94,9 +94,11 @@ mydata$next_vote[mydata$last_voted_party=="Conservative"] <- will_vote_conser
 mydata$next_vote[mydata$last_voted_party=="Green"] <- will_vote_green
 mydata$next_vote[mydata$last_voted_party=="Others"] <- will_vote_other
 
-#============Question 7: Simulate the audience opinion on media effect on voting======
-# set the scales according to the survey question on participants' opinion on media
-media_list <- c("strongly agree","agree","no opinion","disagree","strongly disagree")
+#==========Question 7: Simulate the audience opinion on media effect on voting==
+# set the scales according to the survey question on participants' 
+#      opinion on media
+media_list <- c("strongly agree","agree","no opinion",
+                "disagree","strongly disagree")
 mydata <- mutate(mydata, media_effect=NA) #create a new empty variable
 
 # record the measurements that plan to vote for different party
@@ -110,7 +112,8 @@ disagree_opinion <- sample(media_list, vote_diff, replace = TRUE,
                            prob = c(0.05,0.2,0.15,0.45,0.15))
 # frame the simulation into dataset
 mydata$media_effect[mydata$last_voted_party==mydata$next_vote] <- agree_opinion
-mydata$media_effect[mydata$last_voted_party!=mydata$next_vote] <- disagree_opinion
+mydata$media_effect[mydata$last_voted_party!=mydata$next_vote] <- 
+  disagree_opinion
 
 ### sampling process
 # perform random selection without replacement
@@ -147,19 +150,24 @@ mydata %>%
   ggplot(aes(x=`income`,fill=`next_vote`)) +
   geom_bar(position="dodge")+
   scale_color_fivethirtyeight() +
-  ylab("numbers of respondents") +
+  ylab("Numbers of respondents") +
+  xlab("Income of respondents") +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ggtitle("Figure 1: Political Orientation Between Respondents with Different Earnings")
-# Figure 2: as stacked propotional bar graph
+  ggtitle("Figure 1: Political Orientation of 
+          Respondents with Different Income")
+
 mydata %>%
   ggplot(aes(x=`income`,fill=`next_vote`)) +
   geom_bar(position="fill") +
   scale_color_fivethirtyeight() +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ylab('proportion withn each earning level') +
-  ggtitle("Figure 2: Political Orientations for Respondents with Different Income")
+  ylab('Proportion within each income group') +
+  xlab("Income of respondents") +
+  ggtitle("Figure 2: Political Orientations of 
+          Respondents with Different Income")
 
-# want to plot the opinion on media effect of audience who plan to vote differently
+# want to plot the opinion on media effect of audience 
+#       who plan to vote differently
 # figure 3.1 & 3.2: bar graph for satisfaction scales
 # first, create new column to record differences between two votes
 mydata$party_choice <-ifelse(mydata$last_voted_party == mydata$next_vote,
@@ -168,17 +176,17 @@ p1 <- mydata %>%
   filter(party_choice=="remain") %>%
   ggplot(aes(x=media_effect, group=party_choice)) +
   geom_bar(fill='#8CBD8C',col='grey') +
-  xlab("participants' opinion on media effect") +
-  ylab("number of people remain their vote choice") +
-  ggtitle('Figure 3.1: Opinions on Media Effects(respondents with vote choice changed)')
+  xlab("Participants' opinion on media effect") +
+  ylab("Number of respondents remain their vote choice") +
+  ggtitle('Figure 3.1: Media Effects on Respondents With Vote Choice Unchanged')
 
 p2 <- mydata %>% 
   filter(party_choice !="remain") %>%
   ggplot(aes(x=media_effect, group=party_choice)) +
   geom_bar(fill='#8CBD8C',col='grey') +
-  xlab("participants' opinion on media effect") +
-  ylab("number of people change their vote choice") +
-  ggtitle('Figure 3.2: Opinions on Media Effects(respondents with vote choice changed)')
+  xlab("Participants' opinion on media effect") +
+  ylab("Nnumber of respondents change their vote choice") +
+  ggtitle('Figure 3.2: Media Effects on Respondents With Vote Choice Changed')
 
 p1
 p2
@@ -189,9 +197,9 @@ mydata %>%
   geom_bar(position="fill") +
   scale_color_fivethirtyeight() +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ylab("Proportion within each Income Level") +
-  xlab("Annual Incomes of Respondents") +
-  ggtitle("Figure 4: Opinions on Media Effect Among Different Earnings")
+  ylab("Proportion within each income group") +
+  xlab("Annual incomes of respondents") +
+  ggtitle("Figure 4: Opinions on Media Effect Among Income Groups")
 
 # Figure 5: stacked bar plot between age groups and
 #           their opinion on media effect
@@ -200,9 +208,9 @@ mydata %>%
   geom_bar(position="fill") +
   scale_color_fivethirtyeight() +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ylab("Proportion Within Each Age Group") +
-  xlab("Age of the Respondents") +
-  ggtitle("Figure 5: Different Age Groups' Opinion on Media Effect")
+  ylab("Proportion within each age group") +
+  xlab("Age of respondents") +
+  ggtitle("Figure 5: Opinions on Media Effect Among Age Groups")
 
 # figure 6: stack proportional graph between diff former votes
 mydata %>%
@@ -210,9 +218,9 @@ mydata %>%
   geom_bar(position="fill") +
   scale_color_fivethirtyeight()+
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ylab("proportion under each former voted group") +
-  xlab("repondents previous political orientation") +
-  ggtitle("Figure 6: Opinions on media effect based on former voting")
+  ylab("Proportion under each previous political orientation ") +
+  xlab("Respondents' previous political orientation") +
+  ggtitle("Figure 6: Opinions on Media Effect Based on Previous Vote Choice")
 
 # plot figure7: stacked bar plots between gender
 #               on media effect
@@ -221,10 +229,13 @@ mydata %>%
   geom_bar(position="fill") +
   scale_color_fivethirtyeight() +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  ylab("proportion within each gender group") +
-  xlab("Gender of the Respondents") +
-  ggtitle("Figure 7: Opinion on Media Effects among Gender Groups")
+  ylab("Proportion within each gender group") +
+  xlab("Gender of respondents") +
+  ggtitle("Figure 7: Opinion on Media Effects Among Gender Groups")
 
+
+# code for kniting pdf with screenshots
+# Rcloud
 
 # screen shots of survey
 knitr::include_graphics("/Users/jingxihuang/0001.jpg")

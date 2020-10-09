@@ -1,0 +1,688 @@
+---
+title: "A Potential Solution - Social Media - to Gain Popularity in the Previously Swing Riding"
+author: "Group 66: Wenqing Cao, Jingxi Huang, Jinghan Yang, Duoyi Zhang"
+date: "07/10/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# set op or download pakages
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+#install.packages("ggthemes")
+library(ggthemes)
+# install.packages("sampling")
+library(sampling)
+library(dplyr)
+library(tibble)
+library(gridExtra)
+library(knitr)
+```
+
+```{r data simulation, include=FALSE}
+# set population size as 78500
+N <- 78500
+set.seed(1999) # set seed so that the result could be reproductible
+# According to the designed survey questions, simulate dataset
+#============Question 1: Simulate data for gender==============
+gender_list <- c("Female","Male","Other")
+gender <- sample(x=gender_list, N,replace=TRUE,prob=c(0.58,0.41,0.01))
+
+#============Question 2: Simulate age spreads==================
+age_list <- c("18 to 24 Years","25 to 34 Years","35 to 44 Years",
+              "45 to 54 Years","55 to 64 Years", "65 to 74 Years",
+              "75 Years and older") 
+age <- sample(x=age_list, N, replace=TRUE,
+              prob=c(0.12,0.18,0.2,0.18,0.21,0.09,0.02))
+
+#============Question 3: Simulate participants' annual income===========
+income_list<-c("$0 to $10,000 ","$10,000 to $39,999","$40,000 to $69,999",
+               "$70,000 to $99,999","$100,000 and over")
+income <- sample(x=income_list, N, replace = TRUE,
+                prob=c(0.18,0.37,0.23,0.15,0.09))
+
+#============Question 4: Simulate participants' last votes==============
+party_list <- c("New Democratic","Liberal","Communist","Independent",
+                "Conservative","Green","Others")
+last_voted_party <-sample(x = party_list, N, replace =TRUE,
+                          prob=c(0.41,0.44,0.005,0.002,0.10,0.033,0.01))
+
+#============Question 5: Simulate satisfaction level of the current ruling party=========
+# 1-extremely unsatisfied 2-somehow unsatisfied 3-no opinion
+# 4-somehow satisfied 5-exremely satisfied
+satisfication_list <- c(1:5)
+satisfaction <- rbinom(N, 5, 0.75)
+
+# Generate Population Dataset
+mydata <- tibble(gender, age, satisfaction, income, last_voted_party)
+```
+
+```{r conditional simulation: next votes, include=FALSE}
+#============Question 6: Simulate participants' next vote=============
+party_list <- c("New Democratic","Liberal","Communist","Independent",
+                "Conservative","Green","Others")
+mydata$next_vote <- NA # create a new variable: next_vote
+
+# group the population by measurements' last votes
+last_vote_ND <- nrow(mydata[mydata$last_voted_party=="New Democratic",])
+last_vote_lib <- nrow(mydata[mydata$last_voted_party=="Liberal",])
+last_vote_com <- nrow(mydata[mydata$last_voted_party=="Communist",])
+last_vote_indep <- nrow(mydata[mydata$last_voted_party=="Independent",])
+last_vote_conser <- nrow(mydata[mydata$last_voted_party=="Conservative",])
+last_vote_green <- nrow(mydata[mydata$last_voted_party=="Green",])
+last_other <- nrow(mydata[mydata$last_voted_party=="Others",])
+
+# simulate their next votes with different probabilities
+will_vote_ND <- sample(party_list, last_vote_ND, replace=TRUE,
+                       prob=c(0.95,0.023,0.008,0.002,0.003,0.004,0.01))
+will_vote_lib <- sample(party_list, last_vote_lib, replace=TRUE,
+                       prob=c(0.14,0.77,0.005,0.002,0.04,0.033,0.01))
+will_vote_com <- sample(party_list, last_vote_com, replace=TRUE,
+                       prob=c(0.07,0.05,0.85,0.005,0.005,0.01,0.01))
+will_vote_indep <- sample(party_list, last_vote_indep, replace=TRUE,
+                       prob=c(0.004,0.009,0.005,0.96,0.01,0.002,0.01))
+will_vote_conser <- sample(party_list, last_vote_conser, replace=TRUE,
+                       prob=c(0.01,0.002,0.001,0.023,0.95,0.004,0.01))
+will_vote_green <-sample(party_list, last_vote_green, replace=TRUE,
+                       prob=c(0.139,0.04,0.004,0.002,0.005,0.8,0.01))
+will_vote_other <- sample(party_list, last_other, replace=TRUE,
+                       prob=c(0.1,0.038,0.005,0.002,0.10,0.03,0.86))
+
+# simulate participants' next voting based on their votes on last election
+mydata$next_vote[mydata$last_voted_party=="New Democratic"] <- will_vote_ND
+mydata$next_vote[mydata$last_voted_party=="Liberal"] <- will_vote_lib
+mydata$next_vote[mydata$last_voted_party=="Communist"] <- will_vote_com
+mydata$next_vote[mydata$last_voted_party=="Independent"] <- will_vote_indep
+mydata$next_vote[mydata$last_voted_party=="Conservative"] <- will_vote_conser
+mydata$next_vote[mydata$last_voted_party=="Green"] <- will_vote_green
+mydata$next_vote[mydata$last_voted_party=="Others"] <- will_vote_other
+```
+
+```{r conditional simulation: media effect, include=FALSE}
+#============Question 7: Simulate the audience opinion on media effect on voting======
+# set the scales according to the survey question on participants' opinion on media
+media_list <- c("strongly agree","agree","no opinion","disagree","strongly disagree")
+mydata <- mutate(mydata, media_effect=NA) #create a new empty variable
+
+# record the measurements that plan to vote for different party
+vote_diff <- nrow(mydata[mydata$last_voted_party!=mydata$next_vote,])
+vote_same <- nrow(mydata[mydata$last_voted_party==mydata$next_vote,])
+
+# simulate party-switching participants' opinions on media effect
+agree_opinion <- sample(media_list, vote_same, replace = TRUE,
+                       prob = c(0.15,0.45, 0.15, 0.1, 0.15))
+disagree_opinion <- sample(media_list, vote_diff, replace = TRUE,
+                          prob = c(0.05,0.2,0.15,0.45,0.15))
+# frame the simulation into dataset
+mydata$media_effect[mydata$last_voted_party==mydata$next_vote] <- agree_opinion
+mydata$media_effect[mydata$last_voted_party!=mydata$next_vote] <- disagree_opinion
+```
+
+```{r SRSWOR, include=FALSE}
+# perform random selection without replacement
+# we set ideal sample size n as 1500
+srswor_sample <- sample(1:N, 1500, replace = FALSE)
+# store the sample dataset for the following analysis
+mydata <- mydata %>% slice(srswor_sample)
+```
+
+# 1. Non-technical executive summary
+
+The Liberal Party of Canada, the oldest active political party in Canada, has won the federal elections for much of the period since the late 1890s, exceeding any other political parties (Rayside, 2019). However, in the 2019 federal election, the liberal party (under the lead of Prime Minister Justin Trudeau) did not successfully form a majority government – the second time in the entire Canadian history that a winning party has less than 35% of all the votes (Clarke & Levett, 2019). That said, being posted with monthly polling updates becomes increasingly important for the Liberal. 
+
+In particular, Ontario is a crucial area requiring extra attention because it has 121 electoral districts, more than 1/3 of all 338 electoral districts across Canada (Ian MacLeod, 2020). While Ontario has been a traditional liberal province, past election results have shown that some electoral districts within Ontario exhibited the trend to become swing. Davenport is a typical example, with 41% of voters favouring the New Democratic party and 43% of voters favouring the Liberal party in the 2019 federal election. Therefore, in this report, we limited our geographic focus within Davenport, hoping to offer more insights into the current political orientation in this previously swing district so that the Liberal can act ahead of time and make corresponding changes in its campaign plans. 
+
+By surveying a group of 1500 eligible voters, we found that although respondents are somehow satisfied with the current governing party - the Liberal, the Liberal faces a nonnegligible probability of losing Davenport in the next election. Based on our analysis, social media can shape respondents' political orientations, and the social media effect is shaped by various other characteristics of respondents, such as gender, age and income. However, the above finding is subject to potential weaknesses. In particular, we used simulated data because of the financial considerations, meaning that the conclusions and results we offered may not fully reflect the reality. To address this, we sincerely hope that your esteemed party can approve a higher budget so that a more representative real-life sample can be surveyed. Moreover, our analysis is only accurate up to the date of this report published. Given the uncertainties of voters changing their favoured party and the large window between now and the next election, we recommend conducting frequent monthly polling updates moving forward.
+
+# 2. Introduction
+
+As discussed above, the current intensified competitions among Canadian political parties make conducting ongoing monthly polling updates increasingly crucial. To assist our client – the Liberal Party of Canada – in gaining insights into the current political orientation within the previously swing district of Davenport and making corresponding changes in its political campaign plans, we simulated 1500 responses to our customized questions concerning various aspects of potential voters. Hoping to present our findings more methodically, we initially start with the general background section, which details the population studied, the frame and sample chosen to conduct the survey. Afterwards, we outlined the survey design, which covers but not limits to topics such as sampling methods used, ways to reach desired respondents, estimations of the cost to conduct the survey, and solutions of protecting respondent privacy. After specifying general backgrounds, here comes the backbone of this report – the survey result description and the quantitative analysis. By conducting statistical analysis with visualizations, we found that respondents with a relatively low income tend to support the Liberal while wealthy respondents prefer the New Democratic. Moreover, By examining how income, age, gender determine the social media effect on respondents' political orientations, we provided the Liberal a recommendation on how to position itself on social media. Lastly, we finished this report by pointing out some weaknesses of our analysis and the next steps necessary to solidify our recommendation to the client party.
+
+# 3. General background
+
+The population that intended to be studied contains all Canadian citizens or permanent residents who are over 18 years old and live in the Davenport area, which amounts to 78500, as indicated in the 2016 census (Government of Canada, 2020). Ideally, a sample frame – the source material from which a sample can be drawn – containing a full list of individuals qualified with the above characteristics is the most appropriate choice. Although Statistics Canada has such a list, it is not available to us for privacy protection purposes. Fortunately, simulated data based on real-world parameters are used in this report, meaning that finding an accurate sample frame is no longer a concern. However, we have proposed two alternative sample frames if follow-up studies require real-life sampling. One is partnering up with a third-party company and outsourcing the survey process with a cost, which we will discuss in the following section. The other one is developing a sample frame on our own; however, additional costs will present to avoid the issue of non-response (detailed discussions in the survey design section). After deciding on the appropriate frame, we can then select the sample accordingly. In this report, our sample – a collection of individual observations chosen from the frame based on specific sampling methods – is a group of 1500 eligible voters living in the Davenport area.
+
+# 4. Survey design
+
+## 4.1 Sampling methods
+
+Given that our geographic focus is the specific riding of Davenport, we settled on the sampling methodology of Simple Random Sampling Without Replacement (SRSWOR). Such a decision is made under three major considerations. First, under the SRSWOR method, each element – objects on which measurement is taken - has an equal probability of being chosen into a sample. Thus, the final sample is more likely to represent the population intended to be studied; namely, bias is minimized (Horton, 2020). Second, given that the Liberal is the oldest active party and presumably well-funded, the potential expensive price of carrying out SRSWOR is not a huge concern. Last, SRSWOR is less complicated than other methods, meaning that our results and reasoning is easy to understand for our client – the Liberal Party of Canada. Under SRSWOR, we have the following statistical properties:
+
+1. The sample mean $\overline{y}$ is an unbiased estimator $\mu_{y}$ for the population mean. Therefore, we can offer accurate estimations of some variables that are in the interest of our client.
+
+2. The sample variance of $\overline{y}$ is V($\overline{y}$)=$(1-\frac{n}{N})\frac{\sigma_{y}^{2}}{n}$,\newline
+where $\sigma_{y}^{2}$is the population variance. (Variance is a statistical concept that measure how a set of data spread out from the average value)
+
+3. The unbiased variance estimator for $\overline{y}$ is $v(\overline{y})$ = $(1-\frac{n}{N})\frac{s_{y}^{2}}{n}$,\newline
+which satisfies E{v($\overline{y}$)}=V($\overline{y}$). With a unbiased variance estimator, our analysis can offer client a rough idea of to what degree our estimations are accurate.
+
+## 4.2 Reaching desired respondents
+
+We based our analysis in this report on simulated data. Therefore, we will use this section to discuss ways to reach desired respondents in future follow-up studies involving real-life sampling. As previously mentioned, one way is to hire a third-party company to collect sample data of 1500 qualified respondents living in the Davenport area with an estimated cost of 7000 dollars (quote from SurveyMonkey). However, with third-party involvement, we can no longer ensure the randomness of the sampling process. Thus, after careful discussion, we decided to collect data and reach the desired respondents by ourselves. To ensure full age-range coverage and a representative respondent base, we will try to reach respondents in different sites: community centers where elders are over-represented, schools where young people are over-represented and transportation hubs where middle-ages are over-represented. Moreover, we will intentionally keep the number of respondents we reach in sites with different dominant age groups proportional to the population's true age distribution. The next step is to merge these subset lists, and we will randomly draw 1500 people who have previously agreed to participate in our survey.
+
+## 4.3 Survey questions
+
+There are six questions in our self-designed survey, with five questions expecting a categorical answer and one expecting a numerical answer.
+
+### 4.3.1 Categorical question(s):
+Categorical questions:
+What is your gender? \newline
+Male/Female
+
+What age group are you in? \newline
+18 to 24 Years/25 to 34 Years/35 to 44 Years/65 to 74 Years/75 Years and older
+
+What party did you vote in the last election? \newline
+New Democratic/Liberal/Communist/Independent/Conservative/Green/Others
+
+What party will you vote in the next election? \newline
+New Democratic/Liberal/Communist/Independent/Conservative/Green/Others
+
+Do you agree that media affects your voting choice? \newline
+strongly agree/agree/no opinion/disagree/strongly disagree
+
+### 4.3.2 Numerical question(s):
+On a scale of 1-5, please give a rating on how you are satisfied with the current government – the Liberal party of Canada, with 1 indicates not satisfied at all and 5 indicates strongly satisfied.
+
+Note*: This question is generally considered as a categorical question. However, we believe that treating it as a numerical question will allow us to perform some interesting quantitative analysis and provide our client with a rough idea of how respondents are satisfied with its current performance.
+
+## 4.4 Non-response bias and solutions
+
+The potential issue of non-response can significantly impact the accuracy of our analysis. More specifically, with a large number of non-responses, the sample may deviate from the actual composition of the population intended to be studied, thus making a final finding groundless. Non-response occurs because of various reasons: poor survey designs with embarrassing questions asked, unsuitable delivery methods, prolix formats, etc. While we cannot wholly eliminate non-response with real-life surveys, we can modify the survey design to alleviate the issue. For example, we plan to offer some incentive programs to chosen respondents. The mini-awards take different forms for respondents in different age groups (i.e. supermarket coupons for people over 65 years old, car-wash coupons for middle-ages). Simultaneously, we will limit the number of different types of mini-awards offered to avoid over-attracting people from a particular age group. Moreover, we will try to keep our survey's general format short and concise and ensure that each question is easy to understand. Furthermore, we will avoid asking questions that contain private information or potentially embarrassing content, such as the educational background. Last, we will send invitations through email to young and middle-aged respondents but mail a paper copy to respondents who are over 75 years-old to make sure that our survey is accessible to all age ranges, thus avoiding potential non-response bias.
+
+## 4.5 Privacy Protection
+
+Privacy protection is such a crucial topic worth mentioning, as failing to do so would also cause potential non-response bias. More importantly, privacy issues will result in an unprofessional image of our agency, and even an untrustworthy brand image of our client – the Liberal party. With that said, we will have a privacy protection agreement attached to the survey. With a written promise of eliminating privacy leakage, respondents are more likely to participate in our survey and contribute their real thoughts. Moreover, another solution we have is to avoid asking questions concerning respondents’ personal identification, such as name, SIN number, etc.
+
+## 4.6 Cost estimation
+
+Costs will incur in three stages: developing a representative sample frame, incentivizing chosen respondents to participate, hiring professional statisticians to perform a quantitative analysis. We have set a budget limit on the frame development to 2000 dollars as this process only involves hiring people to conduct on-site visits. However, incentive programs discussed above can be pretty expensive. Given that we plan to set the average cost of mini-awards to be approximately 5 dollars, a sample size of 1500 respondents transforms into 7500 dollars of offering incentives. Lastly, two of our professional statisticians will perform the final quantitative analysis, with each spends approximately 10 hours. Therefore, the wage required is 900 dollars, given the average hourly salary for statisticians in Canada is 45 dollars (Statistician salary in Canada). In total, the entire process, to our best knowledge, will cost roughly 10400 dollars.
+
+# 5. Data(simulated) description
+
+The data set contains 1500 observations, with each unit of observation indicates a specific respondent of our self-designed survey. Each observation is associated with 8 variables (7 of them are directly got from respondents’ answer and an additional variable is created for data analyzing purposes). Detailed discussions of each variable are as followed:
+
+## 5.1 Age group
+Age group is a categorical variable that can take on 7 different values: “18 to 24", "25 to 34", "35 to 44", "45 to 54", "55 to 64", "65 to 74", "75 +". Probabilities of having respondents answering different age groups are simulated based on real-life parameters (Open Data Toronto, About Neighborhood Profiles,2016). Sorting respondents with their age in an ascending order, we found that respondents at the ranks of 750 and 751 are all between 35 to 44 years old. Therefore, the median age of respondents sampled in our case fall into the age group of 35 to 44 years old.
+
+## 5.2 Gender
+Gender is a categorical variable that can take on 3 different values: "male", "female", "prefer not to say". Probabilities of having respondents answering different genders are simulated based on real-life parameters (Open Data Toronto, About Neighborhood Profiles,2016). In our simulated data, female respondents dominate, representing approximately 60% of the 1500 respondents surveyed.
+
+## 5.3 Income
+Income is a categorical variable that can take on 6 different values: "$\$0$ to $\$10,000$ ","$\$10,000$ to $\$39,999$","$\$40,000$ to $\$69,999$","$\$70,000$ to $\$99,999$","$\$100,000$ and over”, “Prefer not to say”. Probabilities of having respondents answering different incomes are simulated based on real-life parameters (Open Data Toronto, About Neighborhood Profiles,2016). In our simulated data, respondents with income between $\$10000$ to $\$39999$ dominate, representing almost 40% of the entire sample. Moreover, the median income in our case also fells into this income range.
+
+## 5.4 Last voted party
+Last voted party is a categorical variable that can take on 7 different values: "New Democratic", "Liberal", "Communist", "Independent", "Conservative", "Green", "Others". Probabilities of having respondents answering different most recent vote choice are simulated based on real-life parameters (Elections Canada,Davenport,2015). According to the simulated data, 646 respondents voted the Liberal, and 637 respondents voted the New Democratic, a mere difference of 9 votes. 
+
+## 5.5 Satisfaction score of the current governing party
+Satisfaction score is a numeral variable that can take on 5 different values: 1, 2, 3, 4, 5, with 1 indicates not satisfied at all and 5 indicates strongly satisfied with the current governing party - the Liberal Party of Canada. By design, this variable follows a binomial distribution. According to the simulated result, the average satisfaction score is 3.77, indicating that respondents in our sample are on average pretty satisfied with the Liberal.
+
+## 5.6 Next vote
+Next vote is a categorical variable that can take on 7 different values: "New Democratic", "Liberal", "Communist", "Independent", "Conservative", "Green", "Others". Probabilities of having respondents answering different future vote choice are simulated based on each respondent's answer of the last voted party, as it is reasonable to assume that the majority of individuals will likely maintain their political orientations. In the simulated result, we saw that 713 respondents indicated that they would vote for the New Democratic while the Liberal only have 512 supporters left.
+
+## 5.7 Party Choice
+“Switch party” is a dummy variable, which can only take on two values, we created for analysis purposes. We divided the entire poll of respondents into two groups: respondents who plan to deviate from their last voted party and people who maintain their political orientations. Therefore, this variable can only take on two values – remain or switched. In our case, 1295 respondents chose to retain their political orientations – a result of our conditional simulation method.
+
+## 5.8 Media effect
+The variable Media effect indicates how respondents think they are influenced by social media when making vote decisions. It is a categorical variable that can take on 5 different values: "strongly agree", "agree", "no opinion", "disagree", "strongly disagree". This variable is simulated based on whether respondents switch their political orientations. Specifically, we separate people who plan to deviate from their last voted party from people who maintain their political orientation and simulate their answers regarding media effects differently. According to the simulated data, more than 800 respondents agree that social media influences their vote decisions while the rest are evenly split between the other three answers - no opinion, disagree, and strongly disagree.
+
+# 6. Quantitative analysis
+
+## 6.1 Estimation of mean satisfaction score in the population
+
+```{r estimation of pop satisfaction, include=FALSE}
+# simulated distribution of satisfaction data
+# assuming satisfaction scores follows a binomial distribution
+# binomial(N, 5, 0.75)
+# ~N(5*0.75, 5*0.75*(1-0.75)) -> N(3.75, 0.9375)
+
+n<-1500 #define the sample size
+# calculate 95% confidence interval of population mean
+# get sample mean and its standard deviation
+summary(mydata$satisfaction)
+sd(mydata$satisfaction)
+# calculate the marginal error
+margin_error <- qt(.95,n-1)*sd(mydata$satisfaction)/sqrt(n)
+# calculate the CI
+lower_bound <- mean(mydata$satisfaction) - margin_error
+upper_bound <- mean(mydata$satisfaction) + margin_error
+lower_bound
+upper_bound
+# calculate estimation of the variance of population satisfaction scores
+pop_satisfaction_var <- (1-(n/N))*var(mydata$satisfaction)/n
+pop_satisfaction_var
+```
+
+As mentioned above, the sampling methodology is Simple Random Sampling Without Replacement (SRSWOR). As discussed previously, the mean of a sample is an unbiased estimator of the corresponding population mean under SRSWOR (Wu &amp; Thompson, 2020). With that said, the expected satisfaction score in the population of all potential respondents is 3.77 out of 5, revealing that respondents are somehow satisfied with the Liberal. Given that we simulated the satisfaction score based on the binomial distribution, we further applied a binomial approximation so that some inference methods under the normal distribution can be carried out. In particular, we performed a confidence interval estimation to provide our client with a rough idea of the extent to which our estimated mean satisfaction score in the population is accurate. As a result, we are 95% confident that the population's average satisfaction falls between 3.73 and 3.81, emphasizing again that respondents are somehow satisfied with the Liberal.
+
+## 6.2 The relationship between income and political orientation
+
+According to figure 1 below, we saw that respondents who have an income between $\$10000$ to $\$39999$ are the prominent supporters of the Liberal party. In contrast, there are only less than 40 respondents with an income of $\$100000$ and over supporting the Liberal. Such a finding seems to suggest that Liberal is not the choice of wealthy respondents numeric-wise. However, we failed to consider those wealthy individuals only account for a relatively small proportion of the overall population. That said, to further reveal the relationship between income and the political orientation, we re-draw the graph to demonstrate how political orientations are split within each income range proportion-wise. As indicated in figure 2 below, wealthy respondents indeed do not favour the Liberal, as shown by the fact that respondents with the highest income range have the lowest probability of voting for the Liberal in the next election. Therefore, we have confirmed that the Liberal Party is not a popular choice among wealthy respondents.
+
+```{r income X next_vote, echo=FALSE}
+mydata %>%
+ ggplot(aes(x=`income`,fill=`next_vote`)) +
+  geom_bar(position="dodge")+
+  scale_color_fivethirtyeight() +
+  ylab("Numbers of respondents") +
+  xlab("Income of respondents") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ggtitle("Figure 1: Political Orientation of Respondents with Different Income")
+
+mydata %>%
+ggplot(aes(x=`income`,fill=`next_vote`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab('Proportion within each income group') +
+  xlab("Income of respondents") +
+  ggtitle("Figure 2: Political Orientations of Respondents with Different Income")
+```
+
+## 6.3 The relationship between vote choice and media effect
+
+According to figure 3.1 and figure 3.2, there is a noticeable relationship between vote choice and media effect. Respondents who changed their vote choice have a higher likelihood of agreeing on the media effect. On the other hand, people who deny social media effects tend to keep their vote choices unchanged. Such a phenomenon confirms our assumption that social media can play a vital role in shaping respondents' political orientations. Specifically, social media can not only inform the political process to the public but also shape and alter people's views on political parties (Wharton Business Daily, 2020). Therefore, social media can fundamentally influence the outcomes of elections. With that in mind, the Liberal should take the media effect seriously and implement some programs via Twitter or Facebook to enlarge its influence.
+
+```{r media effect X vote diff, echo=FALSE}
+# want to plot the opinion on media effect of audience who plan to vote differently
+# first, create new column to record differences between two votes
+mydata$party_choice <-ifelse(mydata$last_voted_party == mydata$next_vote,
+                             'remain', 'switch')
+p1 <- mydata %>% 
+  filter(party_choice=="remain") %>%
+  ggplot(aes(x=media_effect, group=party_choice)) +
+  geom_bar(fill='#8CBD8C',col='grey') +
+  xlab("Participants' opinion on media effect") +
+  ylab("Number of respondents remain their vote choice") +
+  ggtitle('Figure 3.1: Media Effects on Respondents With Vote Choice Unchanged')
+
+p2 <- mydata %>% 
+  filter(party_choice !="remain") %>%
+  ggplot(aes(x=media_effect, group=party_choice)) +
+  geom_bar(fill='#8CBD8C',col='grey') +
+  xlab("Participants' opinion on media effect") +
+  ylab("Nnumber of respondents change their vote choice") +
+  ggtitle('Figure 3.2: Media Effects on Respondents With Vote Choice Changed')
+
+p1
+p2
+```
+
+Next, we will examine some factors that can potentially shape the media effect on respondents' political orientations. By finding the group of respondents who are the most susceptible to social network influence, we can advise the Liberal to implement a pertinent campaign plan to gain more popularity using social media.
+
+## 6.4 The relationship between income and media effect
+
+According to figure 4 below, respondents with an income of 100,000 and over have the lowest likelihood to be influenced by social media. In contrast, respondents with an annual income below 39,999 are more likely to change their political orientations based on the information they receive on social media. Specifically, more than half of these respondents agree or strongly agree that their political orientations are indeed affected by social media. Interestingly, as discussed above, most respondents with an annual income below 39,999 are already supporters of the Liberal party. With that in mind, social media represents a perfect opportunity for the Liberal to strengthen its popularity among potential voters with relatively low incomes.
+
+```{r income X media effect, echo=FALSE}
+mydata %>%
+  ggplot(aes(x=`income`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each income group") +
+  xlab("Annual incomes of respondents") +
+  ggtitle("Figure 4: Opinions on Media Effect Among Income Groups")
+```
+
+## 6.5 The relationship between age and media effect 
+
+As indicated in figure 5 below, most respondents over 75 years old agree on the statement that their voting decisions are affected by social media. By contrast, per the feedback received from surveying respondents under 75 years old, we saw that more of them deny social media effects in influencing their political orientations. Generally speaking, the probability of agreeing on the social media effects on political orientations tends to increase with age. That said, we advise the Liberal Party to develop some campaign programs via social media, with a specific targeted audience group of elders.
+
+```{r age X media effect, echo=FALSE}
+mydata %>%
+  ggplot(aes(x=`age`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each age group") +
+  xlab("Age of respondents") +
+  ggtitle("Figure 5: Opinions on Media Effect Among Age Groups")
+```
+
+## 6.6 The relationship between previous political orientation and media effect 
+
+The New Democratic Party is the single largest competitor of the Liberal Party in the Davenport area. Therefore, analyzing how respondents who previously voted for the New Democratic Party will be affected by social media would provide some insights into campaign designing. According to figure 6 below, a majority of respondents who previously voted the New Democratic Party agree or strongly agree that social media shapes their political orientations. In other words, taking good advantage of social media to implement proper marketing strategies can attract supporters of the New Democratic to the Liberal. On the other hand, we also saw that many supporters of the Liberal also agreed on the importance of social media in influencing their political orientations. That said, the Liberal has to continually keep an eye on how the New Democratic Party markets itself via social media, eliminating potential backfires.
+
+```{r last vote ND X media, echo=FALSE}
+mydata %>%
+ggplot(aes(x=`last_voted_party`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight()+
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion under each previous political orientation ") +
+  xlab("Respondents' previous political orientation") +
+  ggtitle("Figure 6: Opinions on Media Effect Based on Previous Vote Choice")
+```
+
+## 6.7 The relationship between gender and media effect
+
+According to figure 7, respondents who prefer not to give specific information on their gender are less likely to be influenced by social media. However, our analysis will not explicitly address them, given that such a group of respondents only accounts for a extremely small proportion of the overall population. Considering only female and male respondents, we discovered that gender does not significantly affect how social media shapes political orientations. The proportion of male respondents indicating that they agree or strongly agree on the social media effects is roughly the same compared to that of female respondents. Therefore, we highly recommend the Liberal to give equal weights to female and male respondents when developing marketing plans on social media.
+
+```{r gender X media effect, echo=FALSE}
+mydata %>%
+ggplot(aes(x=`gender`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each gender group") +
+  xlab("Gender of respondents") +
+  ggtitle("Figure 7: Opinion on Media Effects Among Gender Groups")
+```
+
+# 7. Weaknesses and next steps
+
+Based on our previous analysis, we recommend that our client develop campaign programs to target elders regardless of gender with a relatively low income via social media. However, such a recommendation is subject to potential weaknesses.
+
+First, we based our analysis solely on respondents' subjective view of whether social media affects their voting decision. However, it is possible that respondents who are actually affected by social media did not realize its importance in influencing their political preferences. Moreover, "What we see on Facebook is dictated by algorithms," said SOJC Assistant Professor Nicole Dahmen (Brichacek, 2018). In other words, the effect of filter bubbles and echo chambers can undermine our assumed effect of social media. The information people got is heavily filtered - they get online information based on what they click on. As a result, instead of getting various political views, respondents tend to read only perspectives that they agree with. According to a study conducted by some scholars from the Reuters Institute for the Study of Journalism in Oxford, the media effect on the audience could be subtle (Wettstein, 2017). With that said, our recommendation that utilizing social media to gain popularity among potential voters can be open to doubt.
+
+On the other hand, we used simulated data to perform the analysis, meaning that the conclusions and results we offered may not fully reflect the reality. Although we have simulated our data based on real-life parameters, the data can still deviate from reality. Therefore, we sincerely hope that your esteemed party can approve a higher budget so that a more representative real-life sample can be surveyed. With a higher budget, we can better address the issue of non-response, as discussed previously, so that the sample would provide us with more insights into the population intended to be studied. 
+
+Last, our analysis is only accurate up to the date of this report published. Given the uncertainties of voters changing their favoured party and the large window between now and the next election, we recommend conducting frequent monthly polling updates moving forward.
+
+
+\newpage
+
+# 8. References
+
+- Andra Brichacek,Ryan Lund ,Aaron Nelson,Schaeffer Bonner and Karly DeWees,Six ways the media influence elections(2019),URL https://journalism.uoregon.edu/news/six-ways-media-influences-elections
+- Baptiste Auguie (2017). gridExtra: Miscellaneous Functions for "Grid" Graphics. R package version 2.3. https://CRAN.R-project.org/package=gridExtra
+- H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
+- Hadley Wickham, Romain François, Lionel Henry and Kirill Müller (2020). dplyr: A Grammar of Data Manipulation. R package version 1.0.2. https://CRAN.R-project.org/package=dplyr
+- Jeffrey B. Arnold (2019). ggthemes: Extra Themes, Scales and Geoms for 'ggplot2'. R package version 4.2.0. https://CRAN.R-project.org/package=ggthemes
+- John Naughton,Reports of social media’s influence on voters are greatly exaggerated(2019),
+- Kirill Müller and Hadley Wickham (2020). tibble: Simple Data Frames. R package version 3.0.3. https://CRAN.R-project.org/package=tibble
+- Martin Wettstein and Werner Wirth, University of Zurich,Media Effects: How Media Influence Voters,Swiss Political Science Review 23(3): 262–269,doi:10.1111/spsr.12263,URL https://onlinelibrary.wiley.com/doi/pdf/10.1111/spsr.12263
+- R Core Team (2019). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+- The World's Most Popular Free Online Survey Tool. (n.d.). Retrieved October 07, 2020, from https://www.surveymonkey.com/
+- Wharton Business Daily. (2020, August 17). How Social Media Is Shaping Political Campaigns. Retrieved October 08, 2020, from https://knowledge.wharton.upenn.edu/article/how-social-media-is-shaping-political-campaigns/
+- Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+- Wu, C., &amp; Thompson, M. E. (2020). Sampling Theory and Practice. Cham: Springer International Publishing.
+- Yihui Xie (2014) knitr: A Comprehensive Tool for Reproducible Research in R. In Victoria Stodden, Friedrich Leisch and Roger D. Peng, editors, Implementing Reproducible Computational Research. Chapman and Hall/CRC. ISBN 978-1466561595
+- Yihui Xie and J.J. Allaire and Garrett Grolemund (2018). R Markdown: The Definitive Guide. Chapman and Hall/CRC. ISBN 9781138359338. URL https://bookdown.org/yihui/rmarkdown.
+- Yves Tillé and Alina Matei (2016). sampling: Survey Sampling. R package version 2.8. https://CRAN.R-project.org/package=sampling URL https://www.theguardian.com/commentisfree/2020/feb/15/reports-of-social-media-influence-on-voters-are-greatly-exaggerated
+- 2016 Census: Age and Sex; Type of Dwelling, Statistics Canada (2017) URL,https://www.toronto.ca/wp-content/uploads/2017/10/96d7-2016-Census-Backgrounder-Age-Sex-Dwelling-Type.pdf
+
+
+\newpage
+
+# 9. Appendix
+
+Code and data supporting this analysis is available at: \newline
+https://github.com/jess0605/304-problemset2-gp66
+
+## 9.1 Detail of code supporting this analysis:
+### 9.1.1 Preparation
+
+```{r, eval=FALSE}
+# set op or download pakages
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+#install.packages("ggthemes")
+library(ggthemes)
+# install.packages("sampling")
+library(sampling)
+library(dplyr)
+library(tibble)
+library(gridExtra)
+library(knitr)
+```
+
+### 9.1.2 Data simulation
+```{r, eval=FALSE}
+# set population size as 78500
+N <- 78500
+set.seed(1999) # set seed so that the result could be reproductible
+# According to the designed survey questions, simulate dataset
+#============Question 1: Simulate data for gender==============
+gender_list <- c("Female","Male","Other")
+gender <- sample(x=gender_list, N,replace=TRUE,prob=c(0.58,0.41,0.01))
+
+#============Question 2: Simulate age spreads==================
+age_list <- c("18 to 24 Years","25 to 34 Years","35 to 44 Years",
+              "45 to 54 Years","55 to 64 Years", "65 to 74 Years",
+              "75 Years and older") 
+age <- sample(x=age_list, N, replace=TRUE,
+              prob=c(0.12,0.18,0.2,0.18,0.21,0.09,0.02))
+
+#============Question 3: Simulate participants' annual income===========
+income_list<-c("$0 to $10,000 ","$10,000 to $39,999","$40,000 to $69,999",
+               "$70,000 to $99,999","$100,000 and over")
+income <- sample(x=income_list, N, replace = TRUE,
+                prob=c(0.18,0.37,0.23,0.15,0.09))
+
+#============Question 4: Simulate participants' last votes==============
+party_list <- c("New Democratic","Liberal","Communist","Independent",
+                "Conservative","Green","Others")
+last_voted_party <-sample(x = party_list, N, replace =TRUE,
+                          prob=c(0.41,0.44,0.005,0.002,0.10,0.033,0.01))
+
+#============Question 5: Simulate satisfaction level of the current ruling party=========
+# 1-extremely unsatisfied 2-somehow unsatisfied 3-no opinion
+# 4-somehow satisfied 5-extremely satisfied
+satisfication_list <- c(1:5)
+satisfaction <- rbinom(N, 5, 0.75)
+
+# Generate Population Dataset
+mydata <- tibble(gender, age, satisfaction, income, last_voted_party)
+```
+
+```{r, eval=FALSE}
+#============Question 6: Simulate participants' next vote=============
+party_list <- c("New Democratic","Liberal","Communist","Independent",
+                "Conservative","Green","Others")
+mydata$next_vote <- NA # create a new variable: next_vote
+
+# group the population by measurements' last votes
+last_vote_ND <- nrow(mydata[mydata$last_voted_party=="New Democratic",])
+last_vote_lib <- nrow(mydata[mydata$last_voted_party=="Liberal",])
+last_vote_com <- nrow(mydata[mydata$last_voted_party=="Communist",])
+last_vote_indep <- nrow(mydata[mydata$last_voted_party=="Independent",])
+last_vote_conser <- nrow(mydata[mydata$last_voted_party=="Conservative",])
+last_vote_green <- nrow(mydata[mydata$last_voted_party=="Green",])
+last_other <- nrow(mydata[mydata$last_voted_party=="Others",])
+
+# simulate their next votes with different probabilities
+will_vote_ND <- sample(party_list, last_vote_ND, replace=TRUE,
+                       prob=c(0.95,0.023,0.008,0.002,0.003,0.004,0.01))
+will_vote_lib <- sample(party_list, last_vote_lib, replace=TRUE,
+                       prob=c(0.14,0.77,0.005,0.002,0.04,0.033,0.01))
+will_vote_com <- sample(party_list, last_vote_com, replace=TRUE,
+                       prob=c(0.07,0.05,0.85,0.005,0.005,0.01,0.01))
+will_vote_indep <- sample(party_list, last_vote_indep, replace=TRUE,
+                       prob=c(0.004,0.009,0.005,0.96,0.01,0.002,0.01))
+will_vote_conser <- sample(party_list, last_vote_conser, replace=TRUE,
+                       prob=c(0.01,0.002,0.001,0.023,0.95,0.004,0.01))
+will_vote_green <-sample(party_list, last_vote_green, replace=TRUE,
+                       prob=c(0.139,0.04,0.004,0.002,0.005,0.8,0.01))
+will_vote_other <- sample(party_list, last_other, replace=TRUE,
+                       prob=c(0.1,0.038,0.005,0.002,0.10,0.03,0.86))
+
+# simulate participants' next voting based on their votes on last election
+mydata$next_vote[mydata$last_voted_party=="New Democratic"] <- will_vote_ND
+mydata$next_vote[mydata$last_voted_party=="Liberal"] <- will_vote_lib
+mydata$next_vote[mydata$last_voted_party=="Communist"] <- will_vote_com
+mydata$next_vote[mydata$last_voted_party=="Independent"] <- will_vote_indep
+mydata$next_vote[mydata$last_voted_party=="Conservative"] <- will_vote_conser
+mydata$next_vote[mydata$last_voted_party=="Green"] <- will_vote_green
+mydata$next_vote[mydata$last_voted_party=="Others"] <- will_vote_other
+```
+
+```{r, eval=FALSE}
+#============Question 7: Simulate the audience opinion on media effect on voting======
+# set the scales according to the survey question on participants' opinion on media
+media_list <- c("strongly agree","agree","no opinion","disagree","strongly disagree")
+mydata <- mutate(mydata, media_effect=NA) #create a new empty variable
+
+# record the measurements that plan to vote for different party
+vote_diff <- nrow(mydata[mydata$last_voted_party!=mydata$next_vote,])
+vote_same <- nrow(mydata[mydata$last_voted_party==mydata$next_vote,])
+
+# simulate party-switching participants' opinions on media effect
+agree_opinion <- sample(media_list, vote_same, replace = TRUE,
+                       prob = c(0.15,0.45, 0.15, 0.1, 0.15))
+disagree_opinion <- sample(media_list, vote_diff, replace = TRUE,
+                          prob = c(0.05,0.2,0.15,0.45,0.15))
+# frame the simulation into dataset
+mydata$media_effect[mydata$last_voted_party==mydata$next_vote] <- agree_opinion
+mydata$media_effect[mydata$last_voted_party!=mydata$next_vote] <- disagree_opinion
+```
+
+### 9.1.3 Sampling process
+```{r, eval=FALSE}
+# perform random selection without replacement
+# we set ideal sample size n as 1500
+srswor_sample <- sample(1:N, 1500, replace = FALSE)
+# store the sample dataset for the following analysis
+mydata <- mydata %>% slice(srswor_sample)
+```
+
+### 9.1.4 Quantitative analysis
+```{r, eval=FALSE}
+# simulated distribution of satisfaction data
+# assuming satisfaction scores follows a binomial distribution
+# binomial(N, 5, 0.75)
+# ~N(5*0.75, 5*0.75*(1-0.75)) -> N(3.75, 0.9375)
+
+n<-1500 #define the sample size
+# calculate 95% confidence interval of population mean
+# get sample mean and its standard deviation
+summary(mydata$satisfaction)
+sd(mydata$satisfaction)
+# calculate the marginal error
+margin_error <- qt(.95,n-1)*sd(mydata$satisfaction)/sqrt(n)
+# calculate the CI
+lower_bound <- mean(mydata$satisfaction) - margin_error
+upper_bound <- mean(mydata$satisfaction) + margin_error
+lower_bound
+upper_bound
+# calculate estimation of the variance of population satisfaction scores
+pop_satisfaction_var <- (1-(n/N))*var(mydata$satisfaction)/n
+pop_satisfaction_var
+```
+
+### 9.1.5 Visualizations
+```{r, eval=FALSE}
+# Figure 1: economic classes' choices on next vote, as a bar graph
+mydata %>%
+ ggplot(aes(x=`income`,fill=`next_vote`)) +
+  geom_bar(position="dodge")+
+  scale_color_fivethirtyeight() +
+  ylab("Numbers of respondents") +
+  xlab("Income of respondents") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ggtitle("Figure 1: Political Orientation of Respondents with Different Income")
+
+mydata %>%
+ggplot(aes(x=`income`,fill=`next_vote`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab('Proportion within each income group') +
+  xlab("Income of respondents") +
+  ggtitle("Figure 2: Political Orientations of Respondents with Different Income")
+```
+
+```{r, eval=FALSE}
+# want to plot the opinion on media effect of audience who plan to vote differently
+# figure 3.1 & 3.2: bar graph for satisfaction scales
+# first, create new column to record differences between two votes
+mydata$party_choice <-ifelse(mydata$last_voted_party == mydata$next_vote,
+                             'remain', 'switch')
+p1 <- mydata %>% 
+  filter(party_choice=="remain") %>%
+  ggplot(aes(x=media_effect, group=party_choice)) +
+  geom_bar(fill='#8CBD8C',col='grey') +
+  xlab("Participants' opinion on media effect") +
+  ylab("Number of respondents remain their vote choice") +
+  ggtitle('Figure 3.1: Media Effects on Respondents With Vote Choice Unchanged')
+
+p2 <- mydata %>% 
+  filter(party_choice !="remain") %>%
+  ggplot(aes(x=media_effect, group=party_choice)) +
+  geom_bar(fill='#8CBD8C',col='grey') +
+  xlab("Participants' opinion on media effect") +
+  ylab("Nnumber of respondents change their vote choice") +
+  ggtitle('Figure 3.2: Media Effects on Respondents With Vote Choice Changed')
+
+p1
+p2
+```
+
+```{r, eval=FALSE}
+# figure 4: stacked proportional bar graph between different earnings
+mydata %>%
+  ggplot(aes(x=`income`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each income group") +
+  xlab("Annual incomes of respondents") +
+  ggtitle("Figure 4: Opinions on Media Effect Among Income Groups")
+```
+
+```{r, eval=FALSE}
+# Figure 5: stacked bar plot between age groups and
+#           their opinion on media effect
+mydata %>%
+  ggplot(aes(x=`age`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each age group") +
+  xlab("Age of respondents") +
+  ggtitle("Figure 5: Opinions on Media Effect Among Age Groups")
+```
+
+```{r , eval=FALSE}
+# figure 6: stack proportional graph between diff former votes
+mydata %>%
+ggplot(aes(x=`last_voted_party`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight()+
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion under each previous political orientation ") +
+  xlab("Respondents' previous political orientation") +
+  ggtitle("Figure 6: Opinions on Media Effect Based on Previous Vote Choice")
+```
+
+```{r , eval=FALSE}
+# plot figure7: stacked bar plots between gender
+#               on media effect
+mydata %>%
+ggplot(aes(x=`gender`,fill=`media_effect`)) +
+  geom_bar(position="fill") +
+  scale_color_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Proportion within each gender group") +
+  xlab("Gender of respondents") +
+  ggtitle("Figure 7: Opinion on Media Effects Among Gender Groups")
+```
+
+## 9.2 Survey detail
+### 9.2.1 Survey link
+To view Monthly Polling Updates Surveys, click on the link below (or copy and paste the URL into your browser): \newline
+https://www.surveymonkey.com/r/225DLPD \newline
+
+### 9.2.2 Screenshots of survey questions
+Below is the screen shots of monthly polling updates survey: 
+
+```{r include=TRUE}
+# screen shots of survey
+knitr::include_graphics(c("/cloud/project/0001.jpg",
+                          "/cloud/project/0002.jpg",
+                          "/cloud/project/0003.jpg",
+                          "/cloud/project/0004.jpg"
+                          ))
+```
+
+```{r include=FALSE}
+# screen shots of survey
+# for kniting pdf on local r studio
+knitr::include_graphics(c("/Users/yangjinghan/Documents/0001.png",
+                          "/Users/yangjinghan/Documents/0002.png",
+                          "/Users/yangjinghan/Documents/0003.png",
+                          "/Users/yangjinghan/Documents/0004.png"))
+```
